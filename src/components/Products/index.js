@@ -34,16 +34,18 @@ const apiStatusConstants = {
 const Products = () => {
   const [apiResponse, setApiResponse] = useState({
     status: apiStatusConstants.initial,
-    data: null,
     errorMsg: null,
+    updatedData: [],
   })
   const [searchInput, updateSearch] = useState('')
+  const [activeId, updateActiveId] = useState('')
 
   const getProductsData = async () => {
     setApiResponse({
       status: apiStatusConstants.inProgress,
       data: null,
       errorMsg: null,
+      updatedData: [],
     })
     const url = 'https://fakestoreapi.com/products?limit=10'
     const options = {
@@ -54,10 +56,17 @@ const Products = () => {
     if (response.ok === true) {
       const fetchedData = await response.json()
       if (response.ok) {
+        const updated = fetchedData.map(eachData => ({
+          title: eachData.title,
+          id: eachData.id,
+          category: eachData.category,
+          image: eachData.image,
+          price: eachData.price,
+        }))
         setApiResponse(prevApiDetails => ({
           ...prevApiDetails,
           status: apiStatusConstants.success,
-          data: fetchedData,
+          updatedData: updated,
         }))
       } else {
         setApiResponse(prevApiDetails => ({
@@ -69,37 +78,28 @@ const Products = () => {
     }
   }
 
-  const renderSuccessView = () => {
-    const {data} = apiResponse
-    const updatedData = data.map(eachData => ({
-      title: eachData.title,
-      id: eachData.id,
-      category: eachData.category,
-      image: eachData.image,
-      price: eachData.price,
-    }))
-    return (
-      <ProductsUl>
-        {updatedData.map(eachData => (
-          <DisplayProducts key={eachData.id} productsData={eachData} />
-        ))}
-      </ProductsUl>
+  const getSearchResult = () => {
+    const {updatedData} = apiResponse
+    const searchResult = updatedData.filter(eachData =>
+      eachData.title.toLowerCase().includes(searchInput.toLowerCase()),
     )
+    return searchResult
   }
 
-  const renderSearchBar = () => {
-    const {data} = apiResponse
-    const updatedData = data.map(eachData => ({
-      title: eachData.title,
-      id: eachData.id,
-      category: eachData.category,
-      image: eachData.image,
-      price: eachData.price,
-    }))
+  const getFilteredApps = searchResult => {
+    const filteredData = searchResult.filter(
+      eachData => eachData.id === activeId,
+    )
+    return filteredData
+  }
+
+  const renderSuccessView = () => {
+    const searchResult = getSearchResult()
+    const filteredData = getFilteredApps(searchResult)
     return (
       <ProductsUl>
-        {updatedData.map(eachData => (
-          <SortBy key={eachData.id} productsData={eachData} />
+        {filteredData.map(eachData => (
+          <DisplayProducts key={eachData.id} productsData={eachData} />
         ))}
       </ProductsUl>
     )
@@ -134,6 +134,31 @@ const Products = () => {
         return null
     }
   }
+
+  const onChangeId = id => {
+    updateActiveId(id)
+  }
+
+  const renderSearchBar = () => {
+    const {updatedData} = apiResponse
+    return (
+      <>
+        <ProductsUl>
+          {updatedData.map(eachData => (
+            <SortBy
+              key={eachData.id}
+              sortByData={eachData}
+              onClickTabId={onChangeId()}
+            />
+          ))}
+        </ProductsUl>
+      </>
+    )
+  }
+
+  useEffect(() => {
+    renderSearchBar()
+  }, [])
 
   const onChangeSearch = event => {
     updateSearch(event.target.value)
@@ -243,7 +268,6 @@ const Products = () => {
             <BsBoxArrowUp />
           </BagsProductsP>
         </BagsProductsDiv>
-        {renderSearchBar()}
         <SortByDiv>
           <SearchBar
             type="text"
